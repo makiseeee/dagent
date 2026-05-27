@@ -53,6 +53,8 @@ INLINE_CHECKBOX_RE = re.compile(
 )
 
 TAG_RE = re.compile(r"#([\w\-/\u4e00-\u9fff]+)")
+def strip_tags_from_content(content: str) -> str:
+    return TAG_RE.sub("", content).strip()
 
 PARSE_SECTIONS = {"日程", "Thino", "Schedule", "Tasks", "Todo"}
 
@@ -180,6 +182,7 @@ def parse_markdown_lines(
 
         tags = TAG_RE.findall(content)
         organized = "agent/organized" in tags
+        content = strip_tags_from_content(content)
 
         item = ScheduleItem(
             date=note_date,
