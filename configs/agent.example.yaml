@@ -1,0 +1,19 @@
+llm:
+  provider: deepseek
+  base_url: "https://api.deepseek.com"
+  default_model: "deepseek-chat"
+  cheap_model: null
+
+agent:
+  name: "personal-agent"
+  require_confirmation_for_write: true
+
+obsidian:
+  vault_path: "/path/to/your/obsidian/vault"
+  daily_note_dir: "Daily"
+  date_format: "%Y-%m-%d"
+
+backup:
+  git_enabled: true
+  git_auto_push: false
+  default_commit_message: "Backup Obsidian vault"

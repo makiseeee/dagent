@@ -1,0 +1,147 @@
+import json
+from typing import Literal, Any
+
+from pydantic import BaseModel, Field
+
+from personal_agent.core.llm.client import LLMClient
+
+
+class OrganizedScheduleItem(BaseModel):
+    index: int
+    schedule_content: str
+    suggested_type: Literal["task", "event", "note"] = "task"
+    time: str | None = None
+    reason: str | None = None
+
+
+class OrganizedScheduleOutput(BaseModel):
+    items: list[OrganizedScheduleItem] = Field(default_factory=list)
+
+
+def _strip_json_markdown(raw: str) -> str:
+    text = raw.strip()
+
+    if text.startswith("```"):
+        text = (
+            text.removeprefix("```json")
+            .removeprefix("```")
+            .removesuffix("```")
+            .strip()
+        )
+
+    return text
+
+
+def organize_schedule_items(
+    llm: LLMClient,
+    items: list[dict[str, Any]],
+    *,
+    target_date: str,
+) -> list[dict[str, Any]]:
+    """
+    Use LLM to rewrite loose Thino capture items into concise schedule items.
+
+    LLM only rewrites text. It does not write files.
+    """
+    payload = []
+
+    for idx, item in enumerate(items):
+        payload.append(
+            {
+                "index": idx,
+                "content": item.get("content"),
+                "suggested_type": item.get("suggested_type"),
+                "time": item.get("time"),
+                "effective_date": item.get("effective_date"),
+                "date_source": item.get("date_source"),
+                "section": item.get("section"),
+            }
+        )
+
+    system_prompt = """
+你是一个个人日程整理器。
+
+你的任务是把用户在 Thino 里随手记录的内容，整理成适合写入 Obsidian `## 日程` 区域的简洁条目。
+
+你必须只输出 JSON，不要输出 markdown，不要解释。
+
+输出格式：
+{
+  "items": [
+    {
+      "index": 0,
+      "schedule_content": "整理后的日程文本",
+      "suggested_type": "task",
+      "time": null,
+      "reason": "简短说明"
+    }
+  ]
+}
+
+规则：
+- 每个输入 item 必须对应一个输出 item，index 必须保持一致。
+- 不要新增输入里没有的任务。
+- 不要改变事实、对象、日期含义。
+- 不要把 Thino created_time 当作日程时间。
+- 只有输入 item 的 time 字段非空时，才允许输出 time。
+- schedule_content 要适合放在 "- [ ] ..." 后面。
+- 去掉口语化表达，比如“记得”“一下”“的时候”“有空”等，但保留核心动作。
+- 让任务变成清晰的动宾结构。
+- 中英文术语可以适当规范大小写，比如 vla -> VLA，fig 2 -> Figure 2。
+- 如果内容本身已经很清楚，可以小幅修改或保持原意。
+- suggested_type 一般使用 task；只有明确是事件或会议时才用 event。
+""".strip()
+
+    user_prompt = f"""
+目标日期：{target_date}
+
+待整理事项 JSON：
+{json.dumps(payload, ensure_ascii=False, indent=2)}
+""".strip()
+
+    raw = llm.chat(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=0.1,
+    )
+
+    try:
+        data = json.loads(_strip_json_markdown(raw))
+        parsed = OrganizedScheduleOutput.model_validate(data)
+    except Exception:
+        # 如果 LLM 结构化输出失败，直接回退到原始内容，保证不会阻塞工作流。
+        result = []
+        for item in items:
+            enriched = dict(item)
+            enriched["schedule_content"] = item.get("content") or ""
+            enriched["rewrite_reason"] = "fallback_to_original"
+            result.append(enriched)
+        return result
+
+    by_index = {item.index: item for item in parsed.items}
+
+    result = []
+
+    for idx, item in enumerate(items):
+        enriched = dict(item)
+        organized = by_index.get(idx)
+
+        if organized is None:
+            enriched["schedule_content"] = item.get("content") or ""
+            enriched["rewrite_reason"] = "missing_llm_output"
+        else:
+            enriched["schedule_content"] = organized.schedule_content.strip()
+            enriched["suggested_type"] = organized.suggested_type
+            enriched["rewrite_reason"] = organized.reason
+
+            # 只有原 item 本来有 time，才接受 LLM 输出的 time。
+            if item.get("time"):
+                enriched["time"] = organized.time or item.get("time")
+            else:
+                enriched["time"] = None
+
+        result.append(enriched)
+
+    return result
