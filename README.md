@@ -18,6 +18,7 @@ Current features:
 uv sync
 cp .env.example .env
 cp configs/agent.example.yaml configs/agent.yaml
+```
 
 finally,
-koishi is absolutely right!
+koishi is absolutely right!!
