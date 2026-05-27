@@ -11,6 +11,7 @@ from personal_agent.core.runtime.state import AgentState
 from personal_agent.plugins.schedule.organize_service import apply_organize_today
 from personal_agent.plugins.schedule.mark_done_service import apply_mark_done
 from personal_agent.plugins.schedule.adopt_overdue_service import apply_adopt_overdue_today
+from personal_agent.plugins.schedule.adopt_inbox_service import apply_adopt_inbox_today
 
 
 console = Console()
@@ -183,7 +184,17 @@ def handle_pending_confirmation(config: AppConfig, state: AgentState) -> bool:
             diff_title="Proposed Organize Diff",
             apply_func=apply_organize_today,
         )
-
+    if operation == "schedule.adopt_inbox_today":
+        _print_rewritten_items_table(
+            "Adopt Inbox Items",
+            proposal.get("rewritten_items") or [],
+        )
+        return _confirm_and_apply(
+            config,
+            proposal,
+            diff_title="Proposed Adopt-inbox Diff",
+            apply_func=apply_adopt_inbox_today,
+        )
     if operation == "schedule.adopt_overdue_today":
         _print_rewritten_items_table(
             "Adopt Overdue Items",

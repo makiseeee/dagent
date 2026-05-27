@@ -80,6 +80,21 @@ class Planner:
 
         if not schedule_words:
             return None
+                # 把 inbox 中到今天该处理的事项安排进今天日程
+        if re.search(r"(inbox|待整理|今天该做|今天可安排|该处理)", text, re.IGNORECASE):
+            if re.search(r"(安排|整理|写入|加入|放到|放进|并入)", text):
+                if re.search(r"(今天|今日|日程|计划)", text):
+                    if self._tool_exists("schedule.adopt_inbox_today"):
+                        return AgentPlan(
+                            kind="tool_call",
+                            tool_name="schedule.adopt_inbox_today",
+                            tool_args={
+                                "lookback_days": 7,
+                                "llm_rewrite": True,
+                            },
+                            source="rule",
+                            reason="Matched adopt due inbox items into today's schedule.",
+                        )    
         # 整理进日程 / 写入日程
         if re.search(r"(整理|收拢|归类|写入|加入|放到|放进)", text):
             if re.search(r"(日程|计划)", text):
