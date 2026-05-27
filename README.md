@@ -1,4 +1,4 @@
-# Personal Agent
+#  DAgent
 
 A local extensible personal agent framework running in WSL.
 
