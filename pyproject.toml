@@ -15,6 +15,7 @@ dependencies = [
 
 [project.scripts]
 agent = "personal_agent.apps.cli:app"
+agent-web = "personal_agent.apps.web_gui:main"
 
 
 [build-system]
