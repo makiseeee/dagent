@@ -31,6 +31,11 @@ from personal_agent.plugins.schedule.organized_migration_service import (
     apply_mark_organized_existing,
 )
 
+from personal_agent.plugins.schedule.recurring import (
+    RecurringStore,
+    normalize_weekdays,
+)
+
 app = typer.Typer(
     help="Schedule commands.",
     no_args_is_help=True,
@@ -646,7 +651,7 @@ def adopt_inbox_today(
             border_style="green",
         )
     )
-    
+
 @app.command("mark-organized-existing")
 def mark_organized_existing(
     days: int = typer.Option(
@@ -751,3 +756,207 @@ def mark_organized_existing(
             border_style="green",
         )
     )
+
+recurring_app = typer.Typer(
+    help="Manage recurring schedule rules.",
+    no_args_is_help=True,
+)
+
+
+@recurring_app.command("list")
+def recurring_list(
+    all: bool = typer.Option(
+        False,
+        "--all",
+        help="Show cancelled and paused rules too.",
+    ),
+):
+    """
+    List recurring schedule rules.
+    """
+    config = load_config()
+    store = RecurringStore(config.obsidian)
+
+    rules = store.list_rules(include_cancelled=all)
+
+    if not rules:
+        console.print("[green]No recurring rules found.[/green]")
+        return
+
+    table = Table(title="Recurring Rules")
+    table.add_column("ID")
+    table.add_column("Title")
+    table.add_column("Weekdays")
+    table.add_column("Time")
+    table.add_column("Reminder")
+    table.add_column("Status")
+    table.add_column("Start")
+    table.add_column("End")
+
+    for rule in rules:
+        table.add_row(
+            rule.id,
+            rule.title,
+            ",".join(rule.weekdays),
+            rule.time or "",
+            (
+                f"{rule.reminder_minutes} min"
+                if rule.reminder_minutes is not None
+                else ""
+            ),
+            rule.status,
+            rule.start_date,
+            rule.end_date or "",
+        )
+
+    console.print(table)
+
+
+@recurring_app.command("add")
+def recurring_add(
+    title: str,
+    weekday: list[str] = typer.Option(
+        ...,
+        "--weekday",
+        "-w",
+        help="Weekday, e.g. WE, MO, 周三. Can be passed multiple times.",
+    ),
+    time: str | None = typer.Option(
+        None,
+        "--time",
+        "-t",
+        help="Time like 20:00.",
+    ),
+    reminder: int | None = typer.Option(
+        None,
+        "--reminder",
+        help="Reminder minutes before event.",
+    ),
+    duration: int | None = typer.Option(
+        None,
+        "--duration",
+        help="Duration minutes.",
+    ),
+    start_date: str | None = typer.Option(
+        None,
+        "--start-date",
+        help="Start date YYYY-MM-DD. Defaults to today.",
+    ),
+    end_date: str | None = typer.Option(
+        None,
+        "--end-date",
+        help="End date YYYY-MM-DD.",
+    ),
+    note: str | None = typer.Option(
+        None,
+        "--note",
+        help="Optional note.",
+    ),
+):
+    """
+    Add a weekly recurring schedule rule.
+    """
+    config = load_config()
+    store = RecurringStore(config.obsidian)
+
+    weekdays = normalize_weekdays(weekday)
+
+    rule = store.add_weekly_rule(
+        title=title,
+        weekdays=weekdays,
+        time=time,
+        duration_minutes=duration,
+        reminder_minutes=reminder,
+        start_date=start_date,
+        end_date=end_date,
+        note=note,
+    )
+
+    console.print(
+        Panel(
+            (
+                f"ID: {rule.id}\n"
+                f"Title: {rule.title}\n"
+                f"Weekdays: {','.join(rule.weekdays)}\n"
+                f"Time: {rule.time or ''}\n"
+                f"Reminder: {rule.reminder_minutes or ''}\n"
+                f"Start: {rule.start_date}"
+            ),
+            title="Recurring Rule Added",
+            border_style="green",
+        )
+    )
+
+
+@recurring_app.command("cancel")
+def recurring_cancel(
+    rule_id: str,
+):
+    """
+    Cancel a recurring schedule rule.
+    """
+    config = load_config()
+    store = RecurringStore(config.obsidian)
+
+    try:
+        rule = store.cancel_rule(rule_id)
+    except KeyError as exc:
+        console.print(
+            Panel(
+                str(exc),
+                title="Recurring Rule Not Found",
+                border_style="red",
+            )
+        )
+        raise typer.Exit(code=1) from exc
+
+    console.print(
+        Panel(
+            f"Cancelled: {rule.id}\n{rule.title}",
+            title="Recurring Rule Cancelled",
+            border_style="yellow",
+        )
+    )
+
+
+@recurring_app.command("instances")
+def recurring_instances(
+    start_date: str,
+    end_date: str,
+):
+    """
+    Show recurring instances within a date range.
+    """
+    config = load_config()
+    store = RecurringStore(config.obsidian)
+
+    instances = store.instances_between(start_date, end_date)
+
+    if not instances:
+        console.print("[green]No recurring instances found.[/green]")
+        return
+
+    table = Table(title="Recurring Instances")
+    table.add_column("Date")
+    table.add_column("Time")
+    table.add_column("Title")
+    table.add_column("Rule ID")
+    table.add_column("Reminder")
+
+    for item in instances:
+        table.add_row(
+            item.date,
+            item.time or "",
+            item.title,
+            item.rule_id,
+            (
+                f"{item.reminder_minutes} min"
+                if item.reminder_minutes is not None
+                else ""
+            ),
+        )
+
+    console.print(table)
+
+
+app.add_typer(recurring_app, name="recurring")
