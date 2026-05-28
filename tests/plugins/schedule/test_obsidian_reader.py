@@ -35,6 +35,7 @@ def fake_vault(tmp_path: Path) -> Path:
 
 ## Thino
 
+- 17:30 旧备忘
 - 18:57 27 号问一下陈老师 大创报销
 - 18:58 周三后问一下 autodl 报销的事情 #agent/organized
 - 21:27 明天晚上记得准备组会
@@ -81,6 +82,7 @@ def test_inbox_hides_organized_capture_by_default(reader: ObsidianScheduleReader
     contents = [item["content"] for item in result["items"]]
 
     assert "周三后问一下 autodl 报销的事情" not in contents
+    assert "旧备忘" in contents
     assert "27 号问一下陈老师 大创报销" in contents
     assert "明天晚上记得准备组会" in contents
 
@@ -102,9 +104,11 @@ def test_inbox_can_show_organized_capture(reader: ObsidianScheduleReader):
 def test_inbox_groups_due_and_future_items(reader: ObsidianScheduleReader):
     result = reader.read_inbox_items(days=2, include_organized=False)
 
+    overdue_contents = [item["content"] for item in result["groups"]["overdue"]]
     today_contents = [item["content"] for item in result["groups"]["today"]]
     future_contents = [item["content"] for item in result["groups"]["future"]]
 
+    assert "旧备忘" in overdue_contents
     assert "27 号问一下陈老师 大创报销" in today_contents
     assert "明天晚上记得准备组会" in today_contents
     assert "今天临时处理一个新事项" in today_contents
@@ -147,6 +151,7 @@ def test_today_overview_separates_schedule_overdue_and_inbox(reader: ObsidianSch
     assert "尝试部署上述 VLA" in overdue_schedule_contents
 
     # 未 organized 的 Thino due items 会进入 inbox_due。
+    assert "旧备忘" in inbox_due_contents
     assert "27 号问一下陈老师 大创报销" in inbox_due_contents
     assert "明天晚上记得准备组会" in inbox_due_contents
 
@@ -155,3 +160,45 @@ def test_today_overview_separates_schedule_overdue_and_inbox(reader: ObsidianSch
 
     # 未来事项单独进入 future。
     assert "下周一开始复习人工智能基础的时候记得做并且提交一下第五章作业" in inbox_future_contents
+
+
+def test_old_note_default_capture_leaves_inbox_when_organized(tmp_path: Path, monkeypatch):
+    daily_dir = tmp_path / "2. Areas" / "日记"
+    daily_dir.mkdir(parents=True)
+
+    (daily_dir / "2026-05-26.md").write_text(
+        """# 2026-05-26
+
+## Thino
+
+- 17:30 旧备忘 #agent/organized
+""",
+        encoding="utf-8",
+    )
+
+    (daily_dir / "2026-05-27.md").write_text(
+        """# 2026-05-27
+
+## Thino
+
+- 今天临时处理一个新事项
+""",
+        encoding="utf-8",
+    )
+
+    import personal_agent.plugins.schedule.obsidian.reader as reader_module
+
+    monkeypatch.setattr(reader_module, "datetime", FixedDateTime)
+
+    reader = ObsidianScheduleReader(
+        ObsidianConfig(
+            vault_path=str(tmp_path),
+            daily_note_dir="2. Areas/日记",
+            date_format="%Y-%m-%d",
+        )
+    )
+
+    result = reader.read_inbox_items(days=2, include_organized=False)
+    contents = [item["content"] for item in result["items"]]
+
+    assert "旧备忘" not in contents

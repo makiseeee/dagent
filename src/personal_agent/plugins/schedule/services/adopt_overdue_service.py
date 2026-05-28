@@ -26,7 +26,7 @@ def prepare_adopt_overdue_today(
     today = reader.resolve_date("today")
     overview = reader.read_today_overview(lookback_days=lookback_days)
 
-    overdue_items = overview.get("overdue_items", [])
+    overdue_items = overview.get("overdue_schedule_items", [])
 
     rewritten_items = overdue_items
 

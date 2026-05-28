@@ -353,7 +353,9 @@ class ObsidianScheduleReader:
                 if note_date == today:
                     bucket = "today"
                 else:
-                    bucket = "unplanned"
+                    # 旧 capture 仍然属于最近 N 天待整理池。
+                    # 放入 overdue，确保 today_overview/adopt_inbox_today 会把它作为 due item 处理。
+                    bucket = "overdue"
             else:
                 if effective_date < today:
                     bucket = "overdue"

@@ -31,6 +31,14 @@ from personal_agent.plugins.schedule.services.reschedule_service import (
     prepare_reschedule_item,
     apply_reschedule_item,
 )
+from personal_agent.plugins.schedule.services.cancel_service import (
+    prepare_cancel_item,
+    apply_cancel_item,
+)
+from personal_agent.plugins.schedule.services.add_item_service import (
+    prepare_add_today_item,
+    apply_add_today_item,
+)
 __all__ = [
     "ReminderStateStore",
     "find_due_recurring_reminders",
@@ -49,4 +57,8 @@ __all__ = [
     "apply_mark_organized_existing",
     "prepare_reschedule_item",
     "apply_reschedule_item",
+    "prepare_cancel_item",
+    "apply_cancel_item",
+    "prepare_add_today_item",
+    "apply_add_today_item",
 ]

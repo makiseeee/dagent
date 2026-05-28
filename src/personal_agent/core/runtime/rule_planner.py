@@ -52,7 +52,9 @@ class RulePlanner:
             self._plan_mark_done,
             self._plan_reschedule_item,
             self._plan_recurring_cancel,
+            self._plan_cancel_item,
             self._plan_recurring_add,
+            self._plan_add_today_item,
             self._plan_adopt_inbox_today,
             self._plan_organize_today,
             self._plan_inbox_review,
@@ -67,6 +69,97 @@ class RulePlanner:
                 return plan
 
         return None
+
+    def _plan_add_today_item(self, text: str) -> AgentPlan | None:
+        if not self._tool_exists("schedule.add_today_item"):
+            return None
+
+        content = None
+
+        patterns = [
+            r"^添加今天任务\s*[：:，,]?\s*(?P<content>.+)$",
+            r"^今天\s*加(?:一个|个)?任务\s*[：:，,]?\s*(?P<content>.+)$",
+            r"^记到今天日程\s*[：:，,]?\s*(?P<content>.+)$",
+            r"^帮我今天安排一下\s*(?P<content>.+)$",
+        ]
+
+        for pattern in patterns:
+            match = re.search(pattern, text)
+            if match is not None:
+                content = match.group("content")
+                break
+
+        if content is None:
+            match = re.search(
+                r"^(?P<time>今天(?:上午|下午|晚上|中午|早上)?(?:\s*\d{1,2}(?::\d{2})?\s*点?)?)\s*安排一下\s*(?P<content>.+)$",
+                text,
+            )
+            if match is not None:
+                time_text = match.group("time").strip()
+                content = f"{time_text}{match.group('content').strip()}"
+
+        if content is None:
+            return None
+
+        content = content.strip(" ，,。.!！?？")
+
+        if not content:
+            return None
+
+        return AgentPlan(
+            kind="tool_call",
+            tool_name="schedule.add_today_item",
+            tool_args={
+                "content": content,
+                "llm_rewrite": True,
+            },
+            source="rule",
+            reason="Matched add item into today's schedule.",
+        )
+
+    def _plan_cancel_item(self, text: str) -> AgentPlan | None:
+        if not self._tool_exists("schedule.cancel_item"):
+            return None
+
+        target = None
+
+        match = re.search(r"^取消\s*(?P<target>.+)$", text)
+        if match is not None:
+            target = match.group("target")
+
+        if target is None:
+            match = re.search(r"^把\s*(?P<target>.+?)\s*取消\s*$", text)
+            if match is not None:
+                target = match.group("target")
+
+        if target is None:
+            match = re.search(r"^(?:今天|今日)\s*不做\s*(?P<target>.+?)\s*了?$", text)
+            if match is not None:
+                target = match.group("target")
+
+        if target is None:
+            match = re.search(r"^不做\s*(?P<target>.+?)\s*了?$", text)
+            if match is not None:
+                target = match.group("target")
+
+        if target is None:
+            return None
+
+        target = target.strip(" ，,。.!！?？")
+
+        if not target:
+            return None
+
+        return AgentPlan(
+            kind="tool_call",
+            tool_name="schedule.cancel_item",
+            tool_args={
+                "target_text": target,
+                "days": 7,
+            },
+            source="rule",
+            reason="Matched schedule item cancel request.",
+        )
 
     def _plan_reschedule_item(self, text: str) -> AgentPlan | None:
         if not self._tool_exists("schedule.reschedule_item"):
@@ -315,10 +408,19 @@ class RulePlanner:
         )
 
     def _plan_adopt_overdue_today(self, text: str) -> AgentPlan | None:
-        if not re.search(r"(遗留|没完成|未完成|昨天|之前)", text):
+        mentions_overdue = re.search(r"(遗留|没完成|未完成|昨天|之前)", text)
+        arrange_today_schedule = (
+            re.search(r"(安排|规划|排一下).*(今天|今日).*(日程|事项|计划)", text)
+            or re.search(r"(今天|今日).*(日程|事项|计划).*(安排|规划|排一下)", text)
+        )
+
+        if not mentions_overdue and not arrange_today_schedule:
             return None
 
-        if not re.search(r"(放到今天|放进今天|整理到今天|整理进今天|并入今天|接收到今天|今天.*日程)", text):
+        if not arrange_today_schedule and not re.search(
+            r"(放到今天|放进今天|整理到今天|整理进今天|并入今天|接收到今天|今天.*日程)",
+            text,
+        ):
             return None
 
         if not self._tool_exists("schedule.adopt_overdue_today"):

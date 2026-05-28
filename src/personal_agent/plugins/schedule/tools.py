@@ -15,6 +15,12 @@ from personal_agent.plugins.schedule.services.recurring_service import (
 from personal_agent.plugins.schedule.services.reschedule_service import (
     prepare_reschedule_item,
 )
+from personal_agent.plugins.schedule.services.cancel_service import (
+    prepare_cancel_item,
+)
+from personal_agent.plugins.schedule.services.add_item_service import (
+    prepare_add_today_item,
+)
 
 class AddRecurringRuleInput(BaseModel):
     title: str
@@ -44,6 +50,16 @@ class RescheduleItemInput(BaseModel):
     target_text: str
     target_date_text: str
     days: int = 7
+
+
+class CancelItemInput(BaseModel):
+    target_text: str
+    days: int = 7
+
+
+class AddTodayItemInput(BaseModel):
+    content: str
+    llm_rewrite: bool = True
 
 
 class OrganizeTodayInput(BaseModel):
@@ -133,6 +149,22 @@ def get_tools(config: AppConfig) -> list[Tool]:
             target_text=args.target_text,
             target_date_text=args.target_date_text,
             days=args.days,
+        )
+
+    def cancel_item(args: CancelItemInput) -> dict:
+        return prepare_cancel_item(
+            config,
+            target_text=args.target_text,
+            days=args.days,
+        )
+
+    def add_today_item(args: AddTodayItemInput) -> dict:
+        llm = LLMClient(config.llm) if args.llm_rewrite else None
+        return prepare_add_today_item(
+            config,
+            content=args.content,
+            llm=llm,
+            llm_rewrite=args.llm_rewrite,
         )
 
     def organize_today(args: OrganizeTodayInput) -> dict:
@@ -256,6 +288,36 @@ def get_tools(config: AppConfig) -> list[Tool]:
                 require_confirmation=True,
             ),
             func=reschedule_item,
+        ),
+        Tool(
+            spec=ToolSpec(
+                name="schedule.cancel_item",
+                description=(
+                    "Prepare cancelling an unfinished task from recent formal ## 日程. "
+                    "This conservatively appends #agent/cancelled to the original line "
+                    "without deleting it or changing the checkbox. Use when the user says "
+                    "取消xxx, 把xxx取消, 今天不做xxx了, or 不做xxx了."
+                ),
+                input_schema=CancelItemInput,
+                side_effect="write",
+                require_confirmation=True,
+            ),
+            func=cancel_item,
+        ),
+        Tool(
+            spec=ToolSpec(
+                name="schedule.add_today_item",
+                description=(
+                    "Prepare adding one unchecked task into today's ## 日程 section. "
+                    "Use when the user says 添加今天任务：xxx, 今天加一个任务xxx, "
+                    "记到今天日程：xxx, 帮我今天安排一下xxx, or 今天下午安排一下xxx. "
+                    "This prepares a diff proposal and requires confirmation."
+                ),
+                input_schema=AddTodayItemInput,
+                side_effect="write",
+                require_confirmation=True,
+            ),
+            func=add_today_item,
         ),
         Tool(
             spec=ToolSpec(

@@ -93,6 +93,58 @@ def parse_markdown_lines(
             current_thino_created_time = time_only_match.group("time")
             continue
 
+        if (
+            current_section == "Thino"
+            and current_thino_created_time is not None
+            and line[:1].isspace()
+            and line.strip()
+            and not line.lstrip().startswith(("-", "*"))
+        ):
+            content = line.strip()
+
+            explicit_date, explicit_date_text = resolve_explicit_date(content, note_date)
+
+            if explicit_date is not None:
+                effective_date = explicit_date
+                date_source = "explicit"
+            else:
+                effective_date = note_date
+                date_source = "note_default"
+
+            suggested_type, actionable = suggest_target_type(
+                content=content,
+                item_type="memo",
+                time=None,
+                explicit_date_text=explicit_date_text,
+            )
+
+            tags = TAG_RE.findall(content)
+            organized = "agent/organized" in tags
+            content = strip_tags_from_content(content)
+
+            items.append(
+                ScheduleItem(
+                    date=note_date,
+                    time=None,
+                    created_time=current_thino_created_time,
+                    effective_date=effective_date,
+                    date_source=date_source,
+                    explicit_date_text=explicit_date_text,
+                    done=None,
+                    content=content,
+                    raw_line=line.rstrip("\n"),
+                    source_file=source_file,
+                    line_number=idx,
+                    item_type="memo",
+                    suggested_type=suggested_type,
+                    actionable=actionable,
+                    tags=tags,
+                    organized=organized,
+                    section=current_section,
+                )
+            )
+            continue
+
         match = LIST_LINE_RE.match(line)
         if not match:
             continue

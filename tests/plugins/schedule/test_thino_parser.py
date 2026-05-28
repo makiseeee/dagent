@@ -46,6 +46,53 @@ def test_thino_inline_checkbox_after_created_time():
     assert item.effective_date == "2026-06-01"
 
 
+def test_thino_time_group_plain_indented_capture():
+    lines = [
+        "## Thino",
+        "- 20:22 ",
+        "\t明天问一下陈老师后面的安排",
+    ]
+
+    items = parse_markdown_lines(
+        lines,
+        note_date="2026-05-28",
+        source_file="2026-05-28.md",
+    )
+
+    assert len(items) == 1
+
+    item = items[0]
+    assert item.content == "明天问一下陈老师后面的安排"
+    assert item.created_time == "20:22"
+    assert item.time is None
+    assert item.item_type == "memo"
+    assert item.done is None
+    assert item.effective_date == "2026-05-29"
+    assert item.date_source == "explicit"
+
+
+def test_thino_time_group_plain_indented_note_default_capture():
+    lines = [
+        "## Thino",
+        "- 20:22 ",
+        "\t旧备忘",
+    ]
+
+    items = parse_markdown_lines(
+        lines,
+        note_date="2026-05-28",
+        source_file="2026-05-28.md",
+    )
+
+    assert len(items) == 1
+
+    item = items[0]
+    assert item.content == "旧备忘"
+    assert item.created_time == "20:22"
+    assert item.effective_date == "2026-05-28"
+    assert item.date_source == "note_default"
+
+
 def test_agent_organized_tag_is_parsed():
     lines = [
         "## Thino",
