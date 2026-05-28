@@ -1,4 +1,4 @@
-from personal_agent.plugins.schedule.thino_parser import parse_markdown_lines
+from personal_agent.plugins.schedule.parsing.thino_parser import parse_markdown_lines
 
 
 def test_thino_created_time_is_not_schedule_time():

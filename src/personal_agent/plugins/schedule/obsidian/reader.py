@@ -4,9 +4,9 @@ from zoneinfo import ZoneInfo
 
 from personal_agent.core.config.loader import ObsidianConfig
 from personal_agent.plugins.schedule.models import ScheduleItem
-from personal_agent.plugins.schedule.thino_parser import parse_markdown_lines
-from personal_agent.plugins.schedule.matcher import is_same_or_rewrite
-from personal_agent.plugins.schedule.recurring import RecurringStore
+from personal_agent.plugins.schedule.parsing.thino_parser import parse_markdown_lines
+from personal_agent.plugins.schedule.obsidian.matcher import is_same_or_rewrite
+from personal_agent.plugins.schedule.recurring.store import RecurringStore
 
 
 TODAY_ALIASES = {"", "today", "今天", "今日", "now", "当前"}

@@ -1,4 +1,4 @@
-from personal_agent.plugins.schedule.date_resolver import resolve_explicit_date
+from personal_agent.plugins.schedule.parsing.date_resolver import resolve_explicit_date
 
 
 def test_resolve_tomorrow():

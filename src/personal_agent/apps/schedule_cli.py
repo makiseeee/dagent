@@ -3,7 +3,7 @@ from rich.table import Table
 import typer
 
 from personal_agent.core.config.loader import load_config
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -12,26 +12,26 @@ from rich.panel import Panel
 from rich.syntax import Syntax
 
 from personal_agent.core.backup.git_backup import GitBackupManager
-from personal_agent.plugins.schedule.writer import build_append_schedule_plan
+from personal_agent.plugins.schedule.obsidian.writer import build_append_schedule_plan
 from personal_agent.core.llm.client import LLMClient
 from personal_agent.plugins.schedule.organizer import organize_schedule_items
 
-from personal_agent.plugins.schedule.adopt_overdue_service import (
+from personal_agent.plugins.schedule.services.adopt_overdue_service import (
     prepare_adopt_overdue_today,
     apply_adopt_overdue_today,
 )
 
-from personal_agent.plugins.schedule.adopt_inbox_service import (
+from personal_agent.plugins.schedule.services.adopt_inbox_service import (
     prepare_adopt_inbox_today,
     apply_adopt_inbox_today,
 )
 
-from personal_agent.plugins.schedule.organized_migration_service import (
+from personal_agent.plugins.schedule.services.organized_migration_service import (
     prepare_mark_organized_existing,
     apply_mark_organized_existing,
 )
 
-from personal_agent.plugins.schedule.recurring import (
+from personal_agent.plugins.schedule.recurring.store import (
     RecurringStore,
     normalize_weekdays,
 )

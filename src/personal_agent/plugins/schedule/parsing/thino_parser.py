@@ -1,8 +1,8 @@
 import re
 
 from personal_agent.plugins.schedule.models import ScheduleItem
-from personal_agent.plugins.schedule.date_resolver import resolve_explicit_date
-from personal_agent.plugins.schedule.classifier import suggest_target_type
+from personal_agent.plugins.schedule.parsing.date_resolver import resolve_explicit_date
+from personal_agent.plugins.schedule.parsing.classifier import suggest_target_type
 
 
 HEADING_RE = re.compile(r"^(?P<level>#{1,6})\s+(?P<title>.+?)\s*$")

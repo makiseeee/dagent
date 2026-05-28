@@ -3,11 +3,11 @@ from pydantic import BaseModel
 from personal_agent.core.config.loader import AppConfig
 from personal_agent.core.llm.client import LLMClient
 from personal_agent.core.tools.base import Tool, ToolSpec
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
-from personal_agent.plugins.schedule.organize_service import prepare_organize_today
-from personal_agent.plugins.schedule.mark_done_service import prepare_mark_done
-from personal_agent.plugins.schedule.adopt_overdue_service import prepare_adopt_overdue_today
-from personal_agent.plugins.schedule.adopt_inbox_service import prepare_adopt_inbox_today
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
+from personal_agent.plugins.schedule.services.organize_service import prepare_organize_today
+from personal_agent.plugins.schedule.services.mark_done_service import prepare_mark_done
+from personal_agent.plugins.schedule.services.adopt_overdue_service import prepare_adopt_overdue_today
+from personal_agent.plugins.schedule.services.adopt_inbox_service import prepare_adopt_inbox_today
 
 
 class GetDailyItemsInput(BaseModel):

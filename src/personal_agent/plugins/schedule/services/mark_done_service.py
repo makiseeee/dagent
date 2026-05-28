@@ -4,8 +4,8 @@ import difflib
 
 from personal_agent.core.config.loader import AppConfig
 from personal_agent.core.backup.git_backup import GitBackupManager
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
-from personal_agent.plugins.schedule.matcher import text_similarity
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
+from personal_agent.plugins.schedule.obsidian.matcher import text_similarity
 CANDIDATE_THRESHOLD = 0.35
 AUTO_APPLY_THRESHOLD = 0.48
 AMBIGUOUS_MARGIN = 0.08

@@ -8,10 +8,10 @@ from rich.table import Table
 
 from personal_agent.core.config.loader import AppConfig
 from personal_agent.core.runtime.state import AgentState
-from personal_agent.plugins.schedule.organize_service import apply_organize_today
-from personal_agent.plugins.schedule.mark_done_service import apply_mark_done
-from personal_agent.plugins.schedule.adopt_overdue_service import apply_adopt_overdue_today
-from personal_agent.plugins.schedule.adopt_inbox_service import apply_adopt_inbox_today
+from personal_agent.plugins.schedule.services.organize_service import apply_organize_today
+from personal_agent.plugins.schedule.services.mark_done_service import apply_mark_done
+from personal_agent.plugins.schedule.services.adopt_overdue_service import apply_adopt_overdue_today
+from personal_agent.plugins.schedule.services.adopt_inbox_service import apply_adopt_inbox_today
 
 
 console = Console()

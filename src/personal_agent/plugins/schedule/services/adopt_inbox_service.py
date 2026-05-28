@@ -5,10 +5,10 @@ import difflib
 from personal_agent.core.config.loader import AppConfig
 from personal_agent.core.llm.client import LLMClient
 from personal_agent.core.backup.git_backup import GitBackupManager
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
 from personal_agent.plugins.schedule.organizer import organize_schedule_items
-from personal_agent.plugins.schedule.writer import build_append_schedule_plan
-from personal_agent.plugins.schedule.capture_marker import ORGANIZED_TAG
+from personal_agent.plugins.schedule.obsidian.writer import build_append_schedule_plan
+from personal_agent.plugins.schedule.obsidian.capture_marker import ORGANIZED_TAG
 
 
 def _read_text(path: str | Path) -> str:

@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from personal_agent.core.config.loader import ObsidianConfig
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
 
 
 class FixedDateTime(datetime):
@@ -62,9 +62,9 @@ def fake_vault(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def reader(fake_vault: Path, monkeypatch) -> ObsidianScheduleReader:
-    import personal_agent.plugins.schedule.obsidian as obsidian_module
+    import personal_agent.plugins.schedule.obsidian.reader as reader_module
 
-    monkeypatch.setattr(obsidian_module, "datetime", FixedDateTime)
+    monkeypatch.setattr(reader_module, "datetime", FixedDateTime)
 
     config = ObsidianConfig(
         vault_path=str(fake_vault),

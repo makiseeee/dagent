@@ -4,9 +4,9 @@ import difflib
 
 from personal_agent.core.config.loader import AppConfig
 from personal_agent.core.backup.git_backup import GitBackupManager
-from personal_agent.plugins.schedule.obsidian import ObsidianScheduleReader
-from personal_agent.plugins.schedule.matcher import is_same_or_rewrite
-from personal_agent.plugins.schedule.capture_marker import ORGANIZED_TAG
+from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
+from personal_agent.plugins.schedule.obsidian.matcher import is_same_or_rewrite
+from personal_agent.plugins.schedule.obsidian.capture_marker import ORGANIZED_TAG
 
 
 def _read_text(path: str | Path) -> str:
