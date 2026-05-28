@@ -36,6 +36,10 @@ from personal_agent.plugins.schedule.recurring.store import (
     normalize_weekdays,
 )
 
+from personal_agent.plugins.schedule.services.reminder_service import (
+    find_due_recurring_reminders,
+)
+
 app = typer.Typer(
     help="Schedule commands.",
     no_args_is_help=True,
@@ -968,3 +972,59 @@ def recurring_instances(
 
 
 app.add_typer(recurring_app, name="recurring")
+
+reminders_app = typer.Typer(
+    help="Check schedule reminders.",
+    no_args_is_help=True,
+)
+
+
+@reminders_app.command("due")
+def reminders_due(
+    window_minutes: int = typer.Option(
+        30,
+        "--window-minutes",
+        "-w",
+        help="Look ahead N minutes for due reminders.",
+    ),
+):
+    """
+    Show recurring reminders due within the next N minutes.
+    """
+    config = load_config()
+
+    result = find_due_recurring_reminders(
+        config,
+        window_minutes=window_minutes,
+    )
+
+    items = result.get("items", [])
+
+    console.print(f"[bold]Now:[/bold] {result.get('now')}")
+    console.print(f"[bold]Window:[/bold] {result.get('window_minutes')} minutes")
+    console.print(f"[bold]Due reminders:[/bold] {len(items)}")
+
+    if not items:
+        console.print("[green]No due reminders.[/green]")
+        return
+
+    table = Table(title="Due Reminders")
+    table.add_column("Reminder Time")
+    table.add_column("Event Time")
+    table.add_column("Title")
+    table.add_column("Before")
+    table.add_column("Rule ID")
+
+    for item in items:
+        table.add_row(
+            item.get("reminder_time") or "",
+            item.get("instance_time") or "",
+            item.get("title") or "",
+            f"{item.get('reminder_minutes')} min",
+            item.get("rule_id") or "",
+        )
+
+    console.print(table)
+
+
+app.add_typer(reminders_app, name="reminders")

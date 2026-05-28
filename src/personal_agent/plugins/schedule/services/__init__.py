@@ -23,7 +23,11 @@ from personal_agent.plugins.schedule.services.recurring_service import (
     prepare_cancel_recurring_rule,
     apply_recurring_proposal,
 )
+from personal_agent.plugins.schedule.services.reminder_service import (
+    find_due_recurring_reminders,
+)
 __all__ = [
+    "find_due_recurring_reminders",
     "prepare_add_recurring_rule",
     "prepare_cancel_recurring_rule",
     "apply_recurring_proposal",
