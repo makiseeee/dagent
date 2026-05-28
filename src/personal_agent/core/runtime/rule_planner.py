@@ -50,8 +50,8 @@ class RulePlanner:
 
         for rule in [
             self._plan_mark_done,
-            self._plan_recurring_add,
             self._plan_recurring_cancel,
+            self._plan_recurring_add,
             self._plan_adopt_inbox_today,
             self._plan_organize_today,
             self._plan_inbox_review,
@@ -137,9 +137,11 @@ class RulePlanner:
         }
 
     def _plan_recurring_add(self, text: str) -> AgentPlan | None:
-        if not re.search(r"(以后|之后|每周|每星期|每礼拜|每个)", text):
+        if re.search(r"(取消|不用|不再|停止)", text):
             return None
 
+        if not re.search(r"(以后|之后|每周|每星期|每礼拜|每个)", text):
+            return None
         recurring_args = self._extract_weekly_recurring(text)
 
         if not recurring_args or not self._tool_exists("schedule.recurring_add"):
