@@ -50,6 +50,7 @@ class RulePlanner:
 
         for rule in [
             self._plan_mark_done,
+            self._plan_reschedule_item,
             self._plan_recurring_cancel,
             self._plan_recurring_add,
             self._plan_adopt_inbox_today,
@@ -66,6 +67,44 @@ class RulePlanner:
                 return plan
 
         return None
+
+    def _plan_reschedule_item(self, text: str) -> AgentPlan | None:
+        if not self._tool_exists("schedule.reschedule_item"):
+            return None
+
+        date_pattern = r"(?P<date>明天|后天|下周\s*[一二三四五六日天]|\d{4}-\d{2}-\d{2})"
+
+        match = re.search(
+            rf"^把\s*(?P<target>.+?)\s*(?:改到|挪到|移到|放到|放进)\s*{date_pattern}",
+            text,
+        )
+
+        if match is None:
+            match = re.search(
+                rf"^(?P<target>.+?)\s*{date_pattern}\s*(?:再做|做|处理|弄)$",
+                text,
+            )
+
+        if match is None:
+            return None
+
+        target = match.group("target").strip(" ，,。.!！?？")
+        target_date_text = match.group("date").strip()
+
+        if not target:
+            return None
+
+        return AgentPlan(
+            kind="tool_call",
+            tool_name="schedule.reschedule_item",
+            tool_args={
+                "target_text": target,
+                "target_date_text": target_date_text,
+                "days": 7,
+            },
+            source="rule",
+            reason="Matched schedule item reschedule request.",
+        )
 
     def _plan_mark_done(self, text: str) -> AgentPlan | None:
         if not re.search(r"(完成|做完|搞定|标记完成)", text):

@@ -15,6 +15,9 @@ from personal_agent.plugins.schedule.services.adopt_inbox_service import apply_a
 from personal_agent.plugins.schedule.services.recurring_service import (
     apply_recurring_proposal,
 )
+from personal_agent.plugins.schedule.services.reschedule_service import (
+    apply_reschedule_item,
+)
 
 
 console = Console()
@@ -237,6 +240,47 @@ def handle_pending_confirmation(config: AppConfig, state: AgentState) -> bool:
             proposal,
             diff_title="Proposed Adopt-overdue Diff",
             apply_func=apply_adopt_overdue_today,
+        )
+    if operation == "schedule.reschedule_item":
+        candidates = proposal.get("candidates") or []
+        if candidates and proposal.get("status") != "prepared":
+            table = Table(title="Reschedule Candidates")
+            table.add_column("Content")
+            table.add_column("Date")
+            table.add_column("Score")
+            table.add_column("Line")
+
+            for item in candidates:
+                score = item.get("match_score")
+                table.add_row(
+                    item.get("content") or "",
+                    item.get("effective_date") or "",
+                    "" if score is None else f"{score:.2f}",
+                    str(item.get("line_number") or ""),
+                )
+
+            console.print(table)
+
+        if proposal.get("status") != "prepared":
+            console.print(
+                Panel(
+                    (
+                        f"Status: {proposal.get('status')}\n"
+                        f"Target: {proposal.get('target_text')}\n"
+                        f"Target date: {proposal.get('target_date')}\n"
+                        f"Message: {proposal.get('message', '')}"
+                    ),
+                    title="Reschedule Not Prepared",
+                    border_style="yellow",
+                )
+            )
+            return True
+
+        return _confirm_and_apply(
+            config,
+            proposal,
+            diff_title="Proposed Reschedule Diff",
+            apply_func=apply_reschedule_item,
         )
 
     console.print(

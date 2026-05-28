@@ -12,6 +12,9 @@ from personal_agent.plugins.schedule.services.recurring_service import (
     prepare_add_recurring_rule,
     prepare_cancel_recurring_rule,
 )
+from personal_agent.plugins.schedule.services.reschedule_service import (
+    prepare_reschedule_item,
+)
 
 class AddRecurringRuleInput(BaseModel):
     title: str
@@ -34,6 +37,12 @@ class GetDailyItemsInput(BaseModel):
 
 class MarkDoneInput(BaseModel):
     target_text: str
+    days: int = 7
+
+
+class RescheduleItemInput(BaseModel):
+    target_text: str
+    target_date_text: str
     days: int = 7
 
 
@@ -115,6 +124,14 @@ def get_tools(config: AppConfig) -> list[Tool]:
         return prepare_mark_done(
             config,
             target_text=args.target_text,
+            days=args.days,
+        )
+
+    def reschedule_item(args: RescheduleItemInput) -> dict:
+        return prepare_reschedule_item(
+            config,
+            target_text=args.target_text,
+            target_date_text=args.target_date_text,
             days=args.days,
         )
 
@@ -223,6 +240,22 @@ def get_tools(config: AppConfig) -> list[Tool]:
                 require_confirmation=False,
             ),
             func=mark_done,
+        ),
+        Tool(
+            spec=ToolSpec(
+                name="schedule.reschedule_item",
+                description=(
+                    "Prepare rescheduling an unfinished task from recent formal ## 日程. "
+                    "This conservatively appends #agent/rescheduled to the original line "
+                    "and appends the same task to the target date's existing daily note. "
+                    "Use when the user says 把xxx改到明天, 挪到下周一, 移到YYYY-MM-DD, "
+                    "or xxx明天再做."
+                ),
+                input_schema=RescheduleItemInput,
+                side_effect="write",
+                require_confirmation=True,
+            ),
+            func=reschedule_item,
         ),
         Tool(
             spec=ToolSpec(

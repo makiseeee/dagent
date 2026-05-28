@@ -16,6 +16,7 @@ def make_planner() -> RulePlanner:
         tools=DummyToolRegistry(
             {
                 "schedule.mark_done",
+                "schedule.reschedule_item",
                 "schedule.recurring_add",
                 "schedule.recurring_cancel",
                 "schedule.adopt_inbox_today",
@@ -61,6 +62,51 @@ def test_mark_done():
     assert plan is not None
     assert plan.tool_name == "schedule.mark_done"
     assert plan.tool_args["target_text"] == "调研轻量级 VLA"
+
+
+def test_reschedule_item_change_to_tomorrow():
+    planner = make_planner()
+
+    plan = planner.plan("把准备组会改到明天")
+
+    assert plan is not None
+    assert plan.tool_name == "schedule.reschedule_item"
+    assert plan.tool_args["target_text"] == "准备组会"
+    assert plan.tool_args["target_date_text"] == "明天"
+    assert plan.tool_args["days"] == 7
+
+
+def test_reschedule_item_move_to_next_monday():
+    planner = make_planner()
+
+    plan = planner.plan("把调研 VLA benchmark 挪到下周一")
+
+    assert plan is not None
+    assert plan.tool_name == "schedule.reschedule_item"
+    assert plan.tool_args["target_text"] == "调研 VLA benchmark"
+    assert plan.tool_args["target_date_text"] == "下周一"
+
+
+def test_reschedule_item_do_tomorrow():
+    planner = make_planner()
+
+    plan = planner.plan("问陈老师报销明天再做")
+
+    assert plan is not None
+    assert plan.tool_name == "schedule.reschedule_item"
+    assert plan.tool_args["target_text"] == "问陈老师报销"
+    assert plan.tool_args["target_date_text"] == "明天"
+
+
+def test_reschedule_item_this_task_tomorrow():
+    planner = make_planner()
+
+    plan = planner.plan("这个任务明天再做")
+
+    assert plan is not None
+    assert plan.tool_name == "schedule.reschedule_item"
+    assert plan.tool_args["target_text"] == "这个任务"
+    assert plan.tool_args["target_date_text"] == "明天"
 
 
 def test_adopt_inbox_today():
