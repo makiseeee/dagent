@@ -42,7 +42,7 @@ from personal_agent.plugins.schedule.services.reminder_service import (
     find_due_recurring_reminders,
 )
 from personal_agent.core.notify import send_windows_message_box
-
+from personal_agent.plugins.schedule.services.reminder_state import ReminderStateStore
 app = typer.Typer(
     help="Schedule commands.",
     no_args_is_help=True,
@@ -1058,7 +1058,8 @@ def reminders_watch(
     """
     config = load_config()
 
-    seen: set[str] = set()
+    state_store = ReminderStateStore(config.obsidian)
+    removed = state_store.prune_older_than_days(days=14)
 
     console.print(
         Panel(
@@ -1067,6 +1068,7 @@ def reminders_watch(
                 f"Window: {window_minutes} minutes\n"
                 f"Interval: {interval_seconds} seconds\n"
                 f"Press Ctrl+C to stop."
+                f"Pruned old seen records: {removed}\n"
             ),
             title="Reminder Watch",
             border_style="blue",
@@ -1085,10 +1087,10 @@ def reminders_watch(
             for item in items:
                 key = f"{item.get('rule_id')}::{item.get('instance_time')}"
 
-                if key in seen:
+                if state_store.has_seen(key):
                     continue
 
-                seen.add(key)
+                state_store.mark_seen(key, item)
 
                 console.print(
                     Panel(
@@ -1122,7 +1124,7 @@ def reminders_watch(
                         )
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             console.print(
-                f"[dim]{timestamp} checked. due={len(items)}, seen={len(seen)}[/dim]"
+                f"[dim]{timestamp} checked. due={len(items)}[/dim]"
             )
 
             time.sleep(interval_seconds)
