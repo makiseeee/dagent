@@ -26,6 +26,11 @@ from personal_agent.plugins.schedule.adopt_inbox_service import (
     apply_adopt_inbox_today,
 )
 
+from personal_agent.plugins.schedule.organized_migration_service import (
+    prepare_mark_organized_existing,
+    apply_mark_organized_existing,
+)
+
 app = typer.Typer(
     help="Schedule commands.",
     no_args_is_help=True,
@@ -638,6 +643,111 @@ def adopt_inbox_today(
         Panel(
             str(result),
             title="Adopt-inbox Result",
+            border_style="green",
+        )
+    )
+    
+@app.command("mark-organized-existing")
+def mark_organized_existing(
+    days: int = typer.Option(
+        7,
+        "--days",
+        "-d",
+        help="Look back N days for historical Thino captures.",
+    ),
+    threshold: float = typer.Option(
+        0.72,
+        "--threshold",
+        help="Similarity threshold for historical migration.",
+    ),
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Apply organized markers to source Thino lines.",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation when applying.",
+    ),
+):
+    """
+    Mark historical Thino captures as organized if they already appear in ## 日程.
+
+    This is a migration command for old data created before #agent/organized existed.
+    Default is dry-run.
+    """
+    config = load_config()
+
+    proposal = prepare_mark_organized_existing(
+        config,
+        days=days,
+        threshold=threshold,
+    )
+
+    console.print(f"[bold]Days:[/bold] {proposal.get('days')}")
+    console.print(f"[bold]Threshold:[/bold] {proposal.get('threshold')}")
+    console.print(f"[bold]Matches:[/bold] {len(proposal.get('matches', []))}")
+    console.print(f"[bold]Changed files:[/bold] {len(proposal.get('changed_files', []))}")
+
+    matches = proposal.get("matches") or []
+    if matches:
+        table = Table(title="Historical Organized Matches")
+        table.add_column("Thino Capture")
+        table.add_column("Matched Schedule")
+        table.add_column("Source Line")
+        table.add_column("Matched Line")
+
+        for match in matches:
+            table.add_row(
+                match.get("source_content") or "",
+                match.get("matched_content") or "",
+                str(match.get("source_line") or ""),
+                str(match.get("matched_line") or ""),
+            )
+
+        console.print(table)
+
+    if not proposal.get("changed"):
+        console.print(
+            Panel(
+                proposal.get("message") or "Nothing to change.",
+                title="Mark Organized Existing",
+                border_style="green",
+            )
+        )
+        return
+
+    console.print(
+        Panel(
+            Syntax(
+                proposal.get("diff") or "",
+                "diff",
+                theme="monokai",
+                line_numbers=False,
+            ),
+            title="Proposed Organized Marker Migration",
+            border_style="yellow",
+        )
+    )
+
+    if not apply:
+        console.print("[dim]Dry-run only. Use --apply to write changes.[/dim]")
+        return
+
+    if not yes:
+        confirmed = typer.confirm("Apply organized markers?")
+        if not confirmed:
+            console.print("[yellow]Cancelled.[/yellow]")
+            return
+
+    result = apply_mark_organized_existing(config, proposal)
+
+    console.print(
+        Panel(
+            str(result),
+            title="Mark Organized Existing Result",
             border_style="green",
         )
     )
