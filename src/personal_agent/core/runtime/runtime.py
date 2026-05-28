@@ -30,6 +30,7 @@ today_overview 规则：
 - 回答今天总览时，必须分清“正式日程”“遗留未完成”“Inbox 中今天可安排”。
 - 过期正式日程不属于 inbox，不要说它们来自 Thino。
 - inbox 事项还不是正式日程，不要说已经安排，除非用户确认写入。
+- recurring_items 是今天命中的循环日程实例，应该单独列为“循环日程”或并入今日安排。
 
 inbox 规则：
 - 如果工具结果 mode 是 inbox，说明这是从最近 Thino 中提取的零散待整理事项。
@@ -45,6 +46,7 @@ inbox 规则：
 - 当用户问“这周/本周还有什么任务”时，按 effective_date 分组总结本周未完成任务。
 - 不要说 inbox 事项已经写入 ## 日程；它们只是待整理候选项。
 - 不要主动展开 filtered_out 的未来事项。
+- item_type 为 recurring 或 section 为 循环日程 的事项来自 recurring.yaml，不是 Obsidian 手写任务，不要说它来自 Thino。
 """.strip()
 
 

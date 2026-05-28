@@ -190,7 +190,7 @@ def today(raw: bool = typer.Option(False, "--raw", help="Show parser metadata.")
     """
     config = load_config()
     reader = ObsidianScheduleReader(config.obsidian)
-    result = reader.read_daily_items("today")
+    result = reader.read_daily_items("today", include_recurring=True)
     render_schedule_result(result, raw=raw)
 
 
@@ -204,7 +204,7 @@ def date_cmd(
     """
     config = load_config()
     reader = ObsidianScheduleReader(config.obsidian)
-    result = reader.read_daily_items(date)
+    result = reader.read_daily_items(date, include_recurring=True)
     render_schedule_result(result, raw=raw)
 
 
@@ -215,7 +215,7 @@ def raw(date: str = "today"):
     """
     config = load_config()
     reader = ObsidianScheduleReader(config.obsidian)
-    result = reader.read_daily_items(date)
+    result = reader.read_daily_items(date, include_recurring=True)
     render_schedule_result(result, raw=True)
 
 
@@ -228,7 +228,11 @@ def week(raw: bool = typer.Option(False, "--raw", help="Show parser metadata."))
     reader = ObsidianScheduleReader(config.obsidian)
 
     start_date, end_date = get_current_week_range()
-    result = reader.read_range_items(start_date, end_date, lookback_days=30)
+    result = reader.read_range_items_with_recurring(
+        start_date,
+        end_date,
+        lookback_days=30,
+    )
 
     render_schedule_result(result, raw=raw)
 
@@ -289,7 +293,11 @@ def range_cmd(
     config = load_config()
     reader = ObsidianScheduleReader(config.obsidian)
 
-    result = reader.read_range_items(start_date, end_date, lookback_days=30)
+    result = reader.read_range_items_with_recurring(
+        start_date,
+        end_date,
+        lookback_days=30,
+    )
 
     render_schedule_result(result, raw=raw)
 

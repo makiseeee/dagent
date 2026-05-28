@@ -6,6 +6,7 @@ from personal_agent.core.config.loader import ObsidianConfig
 from personal_agent.plugins.schedule.models import ScheduleItem
 from personal_agent.plugins.schedule.thino_parser import parse_markdown_lines
 from personal_agent.plugins.schedule.matcher import is_same_or_rewrite
+from personal_agent.plugins.schedule.recurring import RecurringStore
 
 
 TODAY_ALIASES = {"", "today", "今天", "今日", "now", "当前"}
@@ -72,14 +73,25 @@ class ObsidianScheduleReader:
             "count": len(items),
         }
 
-    def read_daily_items(self, date_text: str | None = None) -> dict:
+    def read_daily_items(
+        self,
+        date_text: str | None = None,
+        include_recurring: bool = False,
+    ) -> dict:
         resolved_date = self.resolve_date(date_text)
 
-        result = self.read_range_items(
-            start_date=resolved_date,
-            end_date=resolved_date,
-            lookback_days=30,
-        )
+        if include_recurring:
+            result = self.read_range_items_with_recurring(
+                start_date=resolved_date,
+                end_date=resolved_date,
+                lookback_days=30,
+            )
+        else:
+            result = self.read_range_items(
+                start_date=resolved_date,
+                end_date=resolved_date,
+                lookback_days=30,
+            )
 
         result["date"] = resolved_date
         return result
@@ -153,6 +165,104 @@ class ObsidianScheduleReader:
             "filtered_out_count": len(filtered_out),
             "scanned_notes": scanned_notes,
         }
+
+    def read_recurring_items(
+        self,
+        start_date: str,
+        end_date: str,
+    ) -> dict:
+        """
+        Read recurring schedule instances as schedule-like items.
+        """
+        store = RecurringStore(self.config)
+        instances = store.instances_between(start_date, end_date)
+
+        items: list[dict] = []
+
+        for instance in instances:
+            data = instance.model_dump()
+
+            items.append(
+                {
+                    "date": data["date"],
+                    "content": data["title"],
+                    "raw_line": "",
+                    "source_file": str(store.path),
+                    "line_number": 0,
+                    "time": data.get("time"),
+                    "created_time": None,
+                    "effective_date": data["date"],
+                    "date_source": "recurring",
+                    "explicit_date_text": None,
+                    "done": None,
+                    "item_type": "recurring",
+                    "suggested_type": "event",
+                    "actionable": True,
+                    "tags": [],
+                    "organized": True,
+                    "section": "循环日程",
+                    "source": "recurring",
+                    "rule_id": data.get("rule_id"),
+                    "duration_minutes": data.get("duration_minutes"),
+                    "reminder_minutes": data.get("reminder_minutes"),
+                }
+            )
+
+        items.sort(
+            key=lambda item: (
+                item.get("effective_date") or "",
+                item.get("time") or "99:99",
+                item.get("content") or "",
+            )
+        )
+
+        return {
+            "mode": "recurring_instances",
+            "start_date": start_date,
+            "end_date": end_date,
+            "items": items,
+            "count": len(items),
+            "store_path": str(store.path),
+        }
+
+    def read_range_items_with_recurring(
+        self,
+        start_date: str,
+        end_date: str,
+        lookback_days: int = 30,
+    ) -> dict:
+        """
+        Read normal Obsidian schedule items plus recurring instances.
+        """
+        result = self.read_range_items(
+            start_date=start_date,
+            end_date=end_date,
+            lookback_days=lookback_days,
+        )
+
+        recurring_result = self.read_recurring_items(
+            start_date=result["start_date"],
+            end_date=result["end_date"],
+        )
+
+        merged_items = result["items"] + recurring_result["items"]
+
+        merged_items.sort(
+            key=lambda item: (
+                item.get("effective_date") or item.get("date") or "",
+                item.get("time") or "99:99",
+                item.get("created_time") or "99:99",
+                item.get("line_number") or 0,
+            )
+        )
+
+        result["items"] = merged_items
+        result["count"] = len(merged_items)
+        result["recurring_items"] = recurring_result["items"]
+        result["recurring_count"] = recurring_result["count"]
+        result["recurring_store_path"] = recurring_result["store_path"]
+
+        return result
 
     def read_recent_items(
         self,
@@ -322,6 +432,7 @@ class ObsidianScheduleReader:
         Formal schedule:
         - today_schedule_items: today's ## 日程 items
         - overdue_schedule_items: previous ## 日程 unfinished tasks not already in today's ## 日程
+        - recurring_items: recurring instances for today
 
         Inbox:
         - inbox_due_items: Thino inbox items whose effective_date <= today or today's no-explicit-date captures
@@ -330,7 +441,7 @@ class ObsidianScheduleReader:
         """
         today = self.resolve_date("today")
 
-        today_result = self.read_daily_items(today)
+        today_result = self.read_daily_items(today, include_recurring=False)
         recent = self.read_recent_items(days=lookback_days, include_today=True)
 
         today_schedule_items: list[dict] = []
@@ -400,6 +511,9 @@ class ObsidianScheduleReader:
         inbox_future_items = inbox_groups.get("future", [])
         inbox_unplanned_items = inbox_groups.get("unplanned", [])
 
+        recurring_result = self.read_recurring_items(today, today)
+        recurring_items = recurring_result.get("items", [])
+
         return {
             "mode": "today_overview",
             "date": today,
@@ -407,6 +521,7 @@ class ObsidianScheduleReader:
 
             "today_schedule_items": today_schedule_items,
             "overdue_schedule_items": overdue_schedule_items,
+            "recurring_items": recurring_items,
 
             "inbox_due_items": inbox_due_items,
             "inbox_future_items": inbox_future_items,
@@ -416,17 +531,20 @@ class ObsidianScheduleReader:
             "items": (
                 overdue_schedule_items
                 + today_schedule_items
+                + recurring_items
                 + inbox_due_items
             ),
 
             "today_schedule_count": len(today_schedule_items),
             "overdue_schedule_count": len(overdue_schedule_items),
+            "recurring_count": len(recurring_items),
             "inbox_due_count": len(inbox_due_items),
             "inbox_future_count": len(inbox_future_items),
             "inbox_unplanned_count": len(inbox_unplanned_items),
             "count": (
                 len(today_schedule_items)
                 + len(overdue_schedule_items)
+                + len(recurring_items)
                 + len(inbox_due_items)
             ),
         }

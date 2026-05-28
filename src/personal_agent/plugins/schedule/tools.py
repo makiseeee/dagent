@@ -88,12 +88,13 @@ def get_tools(config: AppConfig) -> list[Tool]:
             llm,
             llm_rewrite=args.llm_rewrite,
         )
-
+    
     def get_daily_items(args: GetDailyItemsInput) -> dict:
-        return reader.read_daily_items(args.date)
+        return reader.read_daily_items(args.date, include_recurring=True)
+
 
     def get_range_items(args: GetRangeItemsInput) -> dict:
-        return reader.read_range_items(
+        return reader.read_range_items_with_recurring(
             start_date=args.start_date,
             end_date=args.end_date,
             lookback_days=args.lookback_days,
