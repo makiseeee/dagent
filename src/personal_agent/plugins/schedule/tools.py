@@ -8,7 +8,25 @@ from personal_agent.plugins.schedule.services.organize_service import prepare_or
 from personal_agent.plugins.schedule.services.mark_done_service import prepare_mark_done
 from personal_agent.plugins.schedule.services.adopt_overdue_service import prepare_adopt_overdue_today
 from personal_agent.plugins.schedule.services.adopt_inbox_service import prepare_adopt_inbox_today
+from personal_agent.plugins.schedule.services.recurring_service import (
+    prepare_add_recurring_rule,
+    prepare_cancel_recurring_rule,
+)
 
+class AddRecurringRuleInput(BaseModel):
+    title: str
+    weekdays: list[str]
+    time: str | None = None
+    reminder_minutes: int | None = 30
+    duration_minutes: int | None = None
+    start_date: str | None = None
+    end_date: str | None = None
+    note: str | None = None
+
+
+class CancelRecurringRuleInput(BaseModel):
+    rule_id: str | None = None
+    query: str | None = None
 
 class GetDailyItemsInput(BaseModel):
     date: str | None = None
@@ -51,6 +69,25 @@ class GetTodayOverviewInput(BaseModel):
 def get_tools(config: AppConfig) -> list[Tool]:
     reader = ObsidianScheduleReader(config.obsidian)
 
+    def add_recurring_rule(args: AddRecurringRuleInput) -> dict:
+        return prepare_add_recurring_rule(
+            config,
+            title=args.title,
+            weekdays=args.weekdays,
+            time=args.time,
+            reminder_minutes=args.reminder_minutes,
+            duration_minutes=args.duration_minutes,
+            start_date=args.start_date,
+            end_date=args.end_date,
+            note=args.note,
+        )
+
+    def cancel_recurring_rule(args: CancelRecurringRuleInput) -> dict:
+        return prepare_cancel_recurring_rule(
+            config,
+            rule_id=args.rule_id,
+            query=args.query,
+        )
     def adopt_overdue_today(args: AdoptOverdueTodayInput) -> dict:
         llm = LLMClient(config.llm) if args.llm_rewrite else None
         return prepare_adopt_overdue_today(
@@ -107,6 +144,32 @@ def get_tools(config: AppConfig) -> list[Tool]:
         )
 
     return [
+        Tool(
+            spec=ToolSpec(
+                name="schedule.recurring_add",
+                description=(
+                    "Prepare adding a weekly recurring schedule rule. "
+                    "Use when the user says 每周..., 以后每周..., or asks to create a fixed recurring schedule."
+                ),
+                input_schema=AddRecurringRuleInput,
+                side_effect="write",
+                require_confirmation=True,
+            ),
+            func=add_recurring_rule,
+        ),
+        Tool(
+            spec=ToolSpec(
+                name="schedule.recurring_cancel",
+                description=(
+                    "Prepare cancelling an active recurring schedule rule by rule_id or title query. "
+                    "Use when the user asks to cancel a recurring schedule."
+                ),
+                input_schema=CancelRecurringRuleInput,
+                side_effect="write",
+                require_confirmation=True,
+            ),
+            func=cancel_recurring_rule,
+        ),
         Tool(
             spec=ToolSpec(
                 name="schedule.adopt_inbox_today",

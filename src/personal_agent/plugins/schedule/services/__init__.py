@@ -18,8 +18,15 @@ from personal_agent.plugins.schedule.services.organized_migration_service import
     prepare_mark_organized_existing,
     apply_mark_organized_existing,
 )
-
+from personal_agent.plugins.schedule.services.recurring_service import (
+    prepare_add_recurring_rule,
+    prepare_cancel_recurring_rule,
+    apply_recurring_proposal,
+)
 __all__ = [
+    "prepare_add_recurring_rule",
+    "prepare_cancel_recurring_rule",
+    "apply_recurring_proposal",
     "prepare_organize_today",
     "apply_organize_today",
     "prepare_mark_done",

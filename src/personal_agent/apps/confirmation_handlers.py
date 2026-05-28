@@ -12,6 +12,9 @@ from personal_agent.plugins.schedule.services.organize_service import apply_orga
 from personal_agent.plugins.schedule.services.mark_done_service import apply_mark_done
 from personal_agent.plugins.schedule.services.adopt_overdue_service import apply_adopt_overdue_today
 from personal_agent.plugins.schedule.services.adopt_inbox_service import apply_adopt_inbox_today
+from personal_agent.plugins.schedule.services.recurring_service import (
+    apply_recurring_proposal,
+)
 
 
 console = Console()
@@ -172,7 +175,36 @@ def handle_pending_confirmation(config: AppConfig, state: AgentState) -> bool:
 
     proposal = pending.get("result") or {}
     operation = proposal.get("operation")
+    if operation in {"schedule.recurring_add", "schedule.recurring_cancel"}:
+        rule = proposal.get("rule") or {}
 
+        if rule:
+            table = Table(title="Recurring Rule Change")
+            table.add_column("Field")
+            table.add_column("Value")
+
+            for key in [
+                "id",
+                "title",
+                "weekdays",
+                "time",
+                "reminder_minutes",
+                "duration_minutes",
+                "start_date",
+                "end_date",
+                "status",
+            ]:
+                value = rule.get(key)
+                table.add_row(key, "" if value is None else str(value))
+
+            console.print(table)
+
+        return _confirm_and_apply(
+            config,
+            proposal,
+            diff_title="Proposed Recurring Rule Diff",
+            apply_func=apply_recurring_proposal,
+        )
     if operation == "schedule.organize_today":
         _print_rewritten_items_table(
             "LLM Rewritten Schedule Items",
