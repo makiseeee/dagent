@@ -41,6 +41,7 @@ from personal_agent.plugins.schedule.recurring.store import (
 from personal_agent.plugins.schedule.services.reminder_service import (
     find_due_recurring_reminders,
 )
+from personal_agent.core.notify import send_windows_message_box
 
 app = typer.Typer(
     help="Schedule commands.",
@@ -1042,6 +1043,11 @@ def reminders_watch(
         "-i",
         help="Check interval in seconds.",
     ),
+    notify: bool = typer.Option(
+        False,
+        "--notify/--no-notify",
+        help="Send Windows notification from WSL when a reminder is due.",
+    ),
 ):
     """
     Watch recurring reminders in the terminal.
@@ -1096,7 +1102,24 @@ def reminders_watch(
                         border_style="yellow",
                     )
                 )
+                if notify:
+                    notification_result = send_windows_message_box(
+                        title="Personal Agent Reminder",
+                        message=(
+                            f"{item.get('title')}\n\n"
+                            f"Event time: {item.get('instance_time')}\n"
+                            f"Minutes until event: {item.get('minutes_until_event')}"
+                        ),
+                    )
 
+                    if notification_result.get("status") != "sent":
+                        console.print(
+                            Panel(
+                                str(notification_result),
+                                title="Notification Failed",
+                                border_style="red",
+                            )
+                        )
             timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             console.print(
                 f"[dim]{timestamp} checked. due={len(items)}, seen={len(seen)}[/dim]"
@@ -1106,5 +1129,5 @@ def reminders_watch(
 
     except KeyboardInterrupt:
         console.print("[yellow]Reminder watch stopped.[/yellow]")
-        
+
 app.add_typer(reminders_app, name="reminders")
