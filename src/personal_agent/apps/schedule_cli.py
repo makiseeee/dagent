@@ -21,6 +21,11 @@ from personal_agent.plugins.schedule.adopt_overdue_service import (
     apply_adopt_overdue_today,
 )
 
+from personal_agent.plugins.schedule.adopt_inbox_service import (
+    prepare_adopt_inbox_today,
+    apply_adopt_inbox_today,
+)
+
 app = typer.Typer(
     help="Schedule commands.",
     no_args_is_help=True,
@@ -503,6 +508,136 @@ def adopt_overdue_today(
         Panel(
             str(result),
             title="Adopt-overdue Result",
+            border_style="green",
+        )
+    )
+@app.command("adopt-inbox-today")
+def adopt_inbox_today(
+    apply: bool = typer.Option(
+        False,
+        "--apply",
+        help="Apply changes to today's daily note and source Thino captures.",
+    ),
+    yes: bool = typer.Option(
+        False,
+        "--yes",
+        "-y",
+        help="Skip confirmation when applying.",
+    ),
+    lookback_days: int = typer.Option(
+        7,
+        "--lookback-days",
+        help="Look back N days for due inbox items.",
+    ),
+    llm_rewrite: bool = typer.Option(
+        True,
+        "--llm-rewrite/--plain",
+        help="Use LLM to rewrite adopted inbox item text.",
+    ),
+):
+    """
+    Adopt due inbox items into today's ## 日程.
+
+    This reads recent Thino inbox items whose effective_date is today or overdue,
+    writes them into today's ## 日程, and marks source Thino lines with
+    #agent/organized.
+
+    Default is dry-run: show diff only.
+    """
+    config = load_config()
+    llm = LLMClient(config.llm) if llm_rewrite else None
+
+    proposal = prepare_adopt_inbox_today(
+        config,
+        llm,
+        lookback_days=lookback_days,
+        llm_rewrite=llm_rewrite,
+    )
+
+    console.print(f"[bold]Target date:[/bold] {proposal.get('target_date')}")
+    console.print(f"[bold]Target note:[/bold] {proposal.get('note_path')}")
+    console.print(f"[bold]Changed files:[/bold] {len(proposal.get('changed_files', []))}")
+    console.print(f"[bold]New lines:[/bold] {len(proposal.get('new_lines', []))}")
+
+    source_items = proposal.get("source_items") or []
+    if source_items:
+        table = Table(title="Due Inbox Items")
+        table.add_column("Date")
+        table.add_column("Bucket")
+        table.add_column("Content")
+        table.add_column("Line")
+
+        for item in source_items:
+            table.add_row(
+                item.get("effective_date") or "",
+                item.get("bucket") or "",
+                item.get("content") or "",
+                str(item.get("line_number") or ""),
+            )
+
+        console.print(table)
+
+    rewritten_items = proposal.get("rewritten_items") or []
+    if rewritten_items:
+        table = Table(title="LLM Rewritten Schedule Items")
+        table.add_column("Original")
+        table.add_column("Schedule Text")
+        table.add_column("Reason")
+
+        for item in rewritten_items:
+            table.add_row(
+                item.get("original") or "",
+                item.get("schedule_content") or "",
+                item.get("rewrite_reason") or "",
+            )
+
+        console.print(table)
+
+    skipped = proposal.get("skipped_duplicates") or []
+    if skipped:
+        console.print("[yellow]Skipped duplicates:[/yellow]")
+        for item in skipped:
+            console.print(f"- {item}")
+
+    if not proposal.get("changed"):
+        console.print(
+            Panel(
+                proposal.get("message") or "Nothing to change.",
+                title="Adopt Inbox",
+                border_style="green",
+            )
+        )
+        return
+
+    console.print(
+        Panel(
+            Syntax(
+                proposal.get("diff") or "",
+                "diff",
+                theme="monokai",
+                line_numbers=False,
+            ),
+            title="Proposed Adopt-inbox Diff",
+            border_style="yellow",
+        )
+    )
+
+    if not apply:
+        console.print("[dim]Dry-run only. Use --apply to write changes.[/dim]")
+        return
+
+    if not yes:
+        confirmed = typer.confirm("Apply this adopt-inbox change?")
+        if not confirmed:
+            console.print("[yellow]Cancelled.[/yellow]")
+            return
+
+    result = apply_adopt_inbox_today(config, proposal)
+
+    console.print(
+        Panel(
+            str(result),
+            title="Adopt-inbox Result",
             border_style="green",
         )
     )
