@@ -1,6 +1,8 @@
 from rich.console import Console
 from rich.table import Table
 import typer
+import time
+from datetime import datetime
 
 from personal_agent.core.config.loader import load_config
 from personal_agent.plugins.schedule.obsidian.reader import ObsidianScheduleReader
@@ -1026,5 +1028,83 @@ def reminders_due(
 
     console.print(table)
 
+@reminders_app.command("watch")
+def reminders_watch(
+    window_minutes: int = typer.Option(
+        5,
+        "--window-minutes",
+        "-w",
+        help="Look ahead N minutes for due reminders each check.",
+    ),
+    interval_seconds: int = typer.Option(
+        60,
+        "--interval-seconds",
+        "-i",
+        help="Check interval in seconds.",
+    ),
+):
+    """
+    Watch recurring reminders in the terminal.
 
+    This does not send OS notifications yet.
+    It prints each reminder once per process run.
+    Use Ctrl+C to stop.
+    """
+    config = load_config()
+
+    seen: set[str] = set()
+
+    console.print(
+        Panel(
+            (
+                f"Watching reminders...\n"
+                f"Window: {window_minutes} minutes\n"
+                f"Interval: {interval_seconds} seconds\n"
+                f"Press Ctrl+C to stop."
+            ),
+            title="Reminder Watch",
+            border_style="blue",
+        )
+    )
+
+    try:
+        while True:
+            result = find_due_recurring_reminders(
+                config,
+                window_minutes=window_minutes,
+            )
+
+            items = result.get("items", [])
+
+            for item in items:
+                key = f"{item.get('rule_id')}::{item.get('instance_time')}"
+
+                if key in seen:
+                    continue
+
+                seen.add(key)
+
+                console.print(
+                    Panel(
+                        (
+                            f"{item.get('title')}\n\n"
+                            f"Event time: {item.get('instance_time')}\n"
+                            f"Reminder time: {item.get('reminder_time')}\n"
+                            f"Minutes until event: {item.get('minutes_until_event')}"
+                        ),
+                        title="Reminder",
+                        border_style="yellow",
+                    )
+                )
+
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            console.print(
+                f"[dim]{timestamp} checked. due={len(items)}, seen={len(seen)}[/dim]"
+            )
+
+            time.sleep(interval_seconds)
+
+    except KeyboardInterrupt:
+        console.print("[yellow]Reminder watch stopped.[/yellow]")
+        
 app.add_typer(reminders_app, name="reminders")
